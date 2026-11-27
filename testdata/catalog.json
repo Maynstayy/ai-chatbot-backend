@@ -1,0 +1,773 @@
+{
+  "hotels": [
+    {
+      "hotel_id": 101,
+      "name": "Test Ganga View Stay",
+      "location": "Assi Ghat",
+      "description": "TEST DATA - not a real property. Riverside heritage stay a short walk from Assi Ghat with a rooftop restaurant.",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "12 Test Lane, Assi Ghat, Varanasi",
+      "latitude": 25.2867,
+      "longitude": 83.0069,
+      "category": "Heritage",
+      "price_per_night": 0,
+      "rating": 4.6,
+      "total_reviews": 128,
+      "amenities": [
+        "Free WiFi",
+        "Rooftop restaurant",
+        "Ganga view",
+        "Air conditioning"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": true,
+      "pay_at_property": true,
+      "instant_booking": true,
+      "cancellation_hours": 48,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-01T10:00:00Z",
+      "updated_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "hotel_id": 102,
+      "name": "Test Kashi Budget Inn",
+      "location": "Godowlia",
+      "description": "TEST DATA - not a real property. Simple, clean rooms near Godowlia market and the main ghats.",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "45 Test Road, Godowlia, Varanasi",
+      "latitude": 25.3096,
+      "longitude": 83.0076,
+      "category": "Budget",
+      "price_per_night": 0,
+      "rating": 3.9,
+      "total_reviews": 64,
+      "amenities": [
+        "Free WiFi",
+        "Hot water",
+        "24-hour front desk"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": false,
+      "pay_at_property": true,
+      "instant_booking": false,
+      "cancellation_hours": null,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-02T10:00:00Z",
+      "updated_at": "2026-10-02T10:00:00Z"
+    },
+    {
+      "hotel_id": 103,
+      "name": "Test Riverside Palace",
+      "location": "Dashashwamedh",
+      "description": "TEST DATA - not a real property. Luxury palace-style rooms overlooking the Ganga near Dashashwamedh Ghat.",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "3 Test Ghat Road, Varanasi",
+      "latitude": 25.3069,
+      "longitude": 83.0107,
+      "category": "Luxury",
+      "price_per_night": 0,
+      "rating": 4.8,
+      "total_reviews": 210,
+      "amenities": [
+        "Free WiFi",
+        "Pool",
+        "Spa",
+        "Breakfast",
+        "Airport shuttle"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": true,
+      "pay_at_property": false,
+      "instant_booking": true,
+      "cancellation_hours": 72,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-03T10:00:00Z",
+      "updated_at": "2026-10-03T10:00:00Z"
+    },
+    {
+      "hotel_id": 201,
+      "name": "Test Taj Gate Residency",
+      "location": "Taj Ganj",
+      "description": "TEST DATA - not a real property. Comfortable rooms in Taj Ganj with a terrace view of the Taj Mahal.",
+      "city": "Agra",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "8 Test Street, Taj Ganj, Agra",
+      "latitude": 27.167,
+      "longitude": 78.042,
+      "category": "Premium",
+      "price_per_night": 0,
+      "rating": 4.4,
+      "total_reviews": 156,
+      "amenities": [
+        "Free WiFi",
+        "Taj view terrace",
+        "Parking",
+        "Breakfast"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": true,
+      "pay_at_property": true,
+      "instant_booking": true,
+      "cancellation_hours": 24,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-04T10:00:00Z",
+      "updated_at": "2026-10-04T10:00:00Z"
+    },
+    {
+      "hotel_id": 202,
+      "name": "Test Agra Fort Lodge",
+      "location": "Rakabganj",
+      "description": "TEST DATA - not a real property. Budget lodge close to Agra Fort and the railway station.",
+      "city": "Agra",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "21 Test Marg, Agra",
+      "latitude": 27.1795,
+      "longitude": 78.0211,
+      "category": "Budget",
+      "price_per_night": 0,
+      "rating": 4.0,
+      "total_reviews": 42,
+      "amenities": [
+        "Free WiFi",
+        "Parking"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": false,
+      "pay_at_property": false,
+      "instant_booking": false,
+      "cancellation_hours": null,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-05T10:00:00Z",
+      "updated_at": "2026-10-05T10:00:00Z"
+    },
+    {
+      "hotel_id": 301,
+      "name": "Test Vrindavan Ashram Stay",
+      "location": "Parikrama Marg",
+      "description": "TEST DATA - not a real property. Peaceful homestay on the Parikrama Marg with vegetarian meals.",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India",
+      "address": "5 Test Parikrama Marg, Vrindavan",
+      "latitude": 27.579,
+      "longitude": 77.696,
+      "category": "Homestay",
+      "price_per_night": 0,
+      "rating": 4.5,
+      "total_reviews": 37,
+      "amenities": [
+        "Vegetarian meals",
+        "Free WiFi",
+        "Garden"
+      ],
+      "thumbnail_url": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80",
+      "images": [
+        "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&q=80"
+      ],
+      "owner_id": 0,
+      "is_active": true,
+      "is_deleted": false,
+      "free_cancellation": true,
+      "pay_at_property": true,
+      "instant_booking": false,
+      "cancellation_hours": 24,
+      "child_policy": "Children under 6 stay free using existing bedding.",
+      "pet_policy": "Pets are not allowed.",
+      "id_rules": "A government photo ID is required for every adult at check-in.",
+      "gst_rate": 0,
+      "tax_per_night": 0,
+      "tax_rate": 0,
+      "check_in_time": "14:00",
+      "check_out_time": "11:00",
+      "created_at": "2026-10-06T10:00:00Z",
+      "updated_at": "2026-10-06T10:00:00Z"
+    }
+  ],
+  "room_types": [
+    {
+      "room_type_id": 1011,
+      "hotel_id": 101,
+      "name": "Deluxe Ganga View",
+      "capacity": 2,
+      "price_per_night": 3800,
+      "description": "TEST DATA - not a real property. Deluxe Ganga View room.",
+      "amenities": [
+        "Air conditioning",
+        "Ganga view"
+      ],
+      "images": [],
+      "bed_type": "Queen",
+      "size_sqm": 24,
+      "view_type": "River",
+      "total_rooms": 6,
+      "rate_plans": [
+        {
+          "rate_plan_id": 10111,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 3800,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        },
+        {
+          "rate_plan_id": 10112,
+          "room_id": 0,
+          "name": "With breakfast",
+          "description": "",
+          "price_per_night": 4300,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": true,
+          "inclusions": [
+            "Breakfast"
+          ],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 1012,
+      "hotel_id": 101,
+      "name": "Family Suite",
+      "capacity": 4,
+      "price_per_night": 6200,
+      "description": "TEST DATA - not a real property. Family Suite room.",
+      "amenities": [
+        "Air conditioning",
+        "Sofa bed"
+      ],
+      "images": [],
+      "bed_type": "King + sofa bed",
+      "size_sqm": 40,
+      "view_type": "River",
+      "total_rooms": 2,
+      "rate_plans": [
+        {
+          "rate_plan_id": 10121,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 6200,
+          "max_occupancy": 4,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 1021,
+      "hotel_id": 102,
+      "name": "Standard Double",
+      "capacity": 2,
+      "price_per_night": 950,
+      "description": "TEST DATA - not a real property. Standard Double room.",
+      "amenities": [
+        "Fan",
+        "Hot water"
+      ],
+      "images": [],
+      "bed_type": "Double",
+      "size_sqm": 14,
+      "view_type": "",
+      "total_rooms": 10,
+      "rate_plans": [
+        {
+          "rate_plan_id": 10211,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 950,
+          "max_occupancy": 2,
+          "free_cancellation": false,
+          "pay_at_property": true,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 1022,
+      "hotel_id": 102,
+      "name": "Triple Room",
+      "capacity": 3,
+      "price_per_night": 1400,
+      "description": "TEST DATA - not a real property. Triple Room room.",
+      "amenities": [
+        "Air conditioning"
+      ],
+      "images": [],
+      "bed_type": "Double + single",
+      "size_sqm": 18,
+      "view_type": "",
+      "total_rooms": 4,
+      "rate_plans": [
+        {
+          "rate_plan_id": 10221,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 1400,
+          "max_occupancy": 3,
+          "free_cancellation": false,
+          "pay_at_property": true,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 1031,
+      "hotel_id": 103,
+      "name": "Palace Room",
+      "capacity": 2,
+      "price_per_night": 8200,
+      "description": "TEST DATA - not a real property. Palace Room room.",
+      "amenities": [
+        "Air conditioning",
+        "Bathtub"
+      ],
+      "images": [],
+      "bed_type": "King",
+      "size_sqm": 32,
+      "view_type": "River",
+      "total_rooms": 5,
+      "rate_plans": [
+        {
+          "rate_plan_id": 10311,
+          "room_id": 0,
+          "name": "With breakfast",
+          "description": "",
+          "price_per_night": 8200,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": false,
+          "breakfast_included": true,
+          "inclusions": [
+            "Breakfast",
+            "Evening aarti boat ride"
+          ],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        },
+        {
+          "rate_plan_id": 10312,
+          "room_id": 0,
+          "name": "Winter offer",
+          "description": "",
+          "price_per_night": 9000,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": false,
+          "breakfast_included": true,
+          "inclusions": [
+            "Breakfast"
+          ],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "percentage",
+          "discount_value": 10,
+          "gst_rate": 0,
+          "tax_per_night": 0,
+          "discount_valid_from": "2026-11-01",
+          "discount_valid_to": "2027-02-28"
+        }
+      ]
+    },
+    {
+      "room_type_id": 2011,
+      "hotel_id": 201,
+      "name": "Taj View Room",
+      "capacity": 2,
+      "price_per_night": 4500,
+      "description": "TEST DATA - not a real property. Taj View Room room.",
+      "amenities": [
+        "Air conditioning",
+        "Balcony"
+      ],
+      "images": [],
+      "bed_type": "Queen",
+      "size_sqm": 22,
+      "view_type": "Taj Mahal",
+      "total_rooms": 4,
+      "rate_plans": [
+        {
+          "rate_plan_id": 20111,
+          "room_id": 0,
+          "name": "With breakfast",
+          "description": "",
+          "price_per_night": 4500,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": true,
+          "inclusions": [
+            "Breakfast"
+          ],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 2012,
+      "hotel_id": 201,
+      "name": "Standard Room",
+      "capacity": 2,
+      "price_per_night": 2600,
+      "description": "TEST DATA - not a real property. Standard Room room.",
+      "amenities": [
+        "Air conditioning"
+      ],
+      "images": [],
+      "bed_type": "Double",
+      "size_sqm": 18,
+      "view_type": "City",
+      "total_rooms": 8,
+      "rate_plans": [
+        {
+          "rate_plan_id": 20121,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 2600,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 2021,
+      "hotel_id": 202,
+      "name": "Budget Double",
+      "capacity": 2,
+      "price_per_night": 1100,
+      "description": "TEST DATA - not a real property. Budget Double room.",
+      "amenities": [
+        "Air conditioning"
+      ],
+      "images": [],
+      "bed_type": "Double",
+      "size_sqm": 14,
+      "view_type": "",
+      "total_rooms": 6,
+      "rate_plans": [
+        {
+          "rate_plan_id": 20211,
+          "room_id": 0,
+          "name": "Room only",
+          "description": "",
+          "price_per_night": 1100,
+          "max_occupancy": 2,
+          "free_cancellation": false,
+          "pay_at_property": false,
+          "breakfast_included": false,
+          "inclusions": [],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    },
+    {
+      "room_type_id": 3011,
+      "hotel_id": 301,
+      "name": "Garden Room",
+      "capacity": 2,
+      "price_per_night": 1800,
+      "description": "TEST DATA - not a real property. Garden Room room.",
+      "amenities": [
+        "Fan",
+        "Garden view"
+      ],
+      "images": [],
+      "bed_type": "Twin",
+      "size_sqm": 16,
+      "view_type": "Garden",
+      "total_rooms": 5,
+      "rate_plans": [
+        {
+          "rate_plan_id": 30111,
+          "room_id": 0,
+          "name": "With meals",
+          "description": "",
+          "price_per_night": 1800,
+          "max_occupancy": 2,
+          "free_cancellation": true,
+          "pay_at_property": true,
+          "breakfast_included": true,
+          "inclusions": [
+            "Vegetarian breakfast and dinner"
+          ],
+          "is_active": true,
+          "created_at": "2026-10-01T10:00:00Z",
+          "updated_at": "2026-10-01T10:00:00Z",
+          "discount_type": "none",
+          "discount_value": 0,
+          "gst_rate": 0,
+          "tax_per_night": 0
+        }
+      ]
+    }
+  ],
+  "holds": [
+    {
+      "room_type_id": 1012,
+      "check_in": "2027-01-10",
+      "check_out": "2027-01-15",
+      "room_count": 2,
+      "status": "confirmed"
+    },
+    {
+      "room_type_id": 2011,
+      "check_in": "2027-02-14",
+      "check_out": "2027-02-16",
+      "room_count": 4,
+      "status": "confirmed"
+    },
+    {
+      "room_type_id": 1011,
+      "check_in": "2027-01-10",
+      "check_out": "2027-01-12",
+      "room_count": 3,
+      "status": "pending"
+    },
+    {
+      "room_type_id": 1021,
+      "check_in": "2027-01-10",
+      "check_out": "2027-01-12",
+      "room_count": 2,
+      "status": "cancelled"
+    }
+  ],
+  "landmarks": [
+    {
+      "landmark_id": 1,
+      "city": "Varanasi",
+      "name": "Dashashwamedh Ghat",
+      "category": "ghat",
+      "latitude": 25.306,
+      "longitude": 83.0104,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 2,
+      "city": "Varanasi",
+      "name": "Assi Ghat",
+      "category": "ghat",
+      "latitude": 25.2861,
+      "longitude": 83.0063,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 3,
+      "city": "Varanasi",
+      "name": "Kashi Vishwanath Temple",
+      "category": "temple",
+      "latitude": 25.3109,
+      "longitude": 83.0107,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 4,
+      "city": "Varanasi",
+      "name": "Varanasi Junction railway station",
+      "category": "station",
+      "latitude": 25.3276,
+      "longitude": 82.9874,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 5,
+      "city": "Agra",
+      "name": "Taj Mahal",
+      "category": "monument",
+      "latitude": 27.1751,
+      "longitude": 78.0421,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 6,
+      "city": "Agra",
+      "name": "Agra Fort",
+      "category": "monument",
+      "latitude": 27.1795,
+      "longitude": 78.0211,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 7,
+      "city": "Agra",
+      "name": "Agra Cantt railway station",
+      "category": "station",
+      "latitude": 27.158,
+      "longitude": 77.9905,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 8,
+      "city": "Vrindavan",
+      "name": "Banke Bihari Temple",
+      "category": "temple",
+      "latitude": 27.58,
+      "longitude": 77.699,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    },
+    {
+      "landmark_id": 9,
+      "city": "Vrindavan",
+      "name": "Prem Mandir",
+      "category": "temple",
+      "latitude": 27.572,
+      "longitude": 77.672,
+      "is_active": true,
+      "created_at": "2026-10-01T10:00:00Z"
+    }
+  ]
+}

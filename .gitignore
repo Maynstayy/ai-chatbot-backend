@@ -1,0 +1,22 @@
+# secrets and local settings (only .env.example is committed)
+.env
+.env.*
+!.env.example
+
+# build output
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage*
+
+# local data
+/uploads/
+*.log
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
