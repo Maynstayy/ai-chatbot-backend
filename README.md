@@ -127,7 +127,6 @@ pkg/cache, pkg/utils Redis wrapper, JSON responses and safe errors (from MaynSta
 migrations/          the chatbot's own schema
 testdata/            fake catalogue
 docs/API.md          endpoint reference with JSON examples
-docs/reference/      MaynStay's original chatbot docs and history migration (reference only)
 ```
 
 ## Security notes
