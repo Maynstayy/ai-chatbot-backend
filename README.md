@@ -75,7 +75,16 @@ there. `CORS_ALLOWED_ORIGINS` already includes `http://localhost:3000`.
 
 See [.env.example](.env.example). Key settings:
 
-- `CATALOG_SOURCE`: `file` (default; fake data, no DB) or `mysql`.
+- `CATALOG_SOURCE`: where hotels come from.
+  - `skymcm`: the **real** listings, read from the SKYMCM website's public API
+    (`SKYMCM_API_URL`). Required when `APP_ENV=production`; the backend refuses
+    to start in production with anything else.
+  - `file` (default) or `mysql`: fake test hotels, for local development and
+    tests only.
+- `SKYMCM_API_URL` / `SKYMCM_ASSET_URL`: the website's API and where its
+  `/uploads/...` photos are served. `https://skymcm.com` is the candidate for
+  both and is **not verified yet**. `https` is required; `http` is allowed
+  only for `localhost` outside production.
 - `DB_*`: only for `mysql`. `DB_NAME` must be `ai_chatbot_<env>`.
   - Any other name is refused before connecting.
   - A database that contains MaynStay booking tables (`signup`, `bookings`,
@@ -93,7 +102,42 @@ See [.env.example](.env.example). Key settings:
 Secrets go only in `.env` or the server environment. Never commit them, and
 never put them in the frontend.
 
-## Using a database (later; needs approval)
+## Real hotels from the SKYMCM website
+
+With `CATALOG_SOURCE=skymcm`, `internal/skymcm` reads the website's own
+public, read-only endpoints server-to-server, the same data the previous
+in-process chatbot read through MaynStay's services:
+
+| Endpoint | Used for |
+| --- | --- |
+| `GET /api/v1/hotels` | listings: names, photos, locations, amenities, ratings, "from" price with GST |
+| `GET /api/v1/hotels/{id}` | one hotel, with check-in/check-out times |
+| `GET /api/v1/room-types` | live availability and final prices for dates and guests |
+| `GET /api/v1/landmarks` | "near X" questions |
+
+- **Prices** are used exactly as returned. The website has already applied
+  discounts, seasonal rates, GST and the room count a party needs, so the
+  chatbot's own pricing step is not used for this source.
+- **Listings:** inactive or deleted hotels are never shown.
+- **Photos:** paths like `/uploads/...` become full URLs on `SKYMCM_ASSET_URL`.
+- **Safety:**
+  - Only those four GET paths can be called.
+  - No cookies, login headers or guest data are sent, and redirects to
+    another host are refused.
+  - Every response is time-limited, size-capped and strictly parsed;
+    upstream error text is never logged or returned.
+- **Load:**
+  - At most `SKYMCM_MAX_CONCURRENCY` (default 4) requests run at once, and
+    identical concurrent requests are shared.
+  - Listings are cached 60 seconds, availability 30 seconds and landmarks
+    30 minutes (`SKYMCM_LANDMARK_CACHE_SECONDS`).
+  - An HTTP 429 pauses requests for its `Retry-After` (at most 60 seconds).
+  - During an outage or pause, cached listings and landmarks are served for
+    up to 10 minutes past their cache time. Availability is never served stale.
+- **Readiness:** `/readyz` shows the API's last known state (`unknown`, `ok`,
+  `degraded` or `rate_limited`) without calling it.
+
+## Using a database (local tests)
 
 1. Create a disposable database and a new user, for example `ai_chatbot_test`
    and `ai_chatbot_test`. Give the user rights on that schema only.

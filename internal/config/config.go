@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -21,18 +22,31 @@ const (
 	EnvTest        = "test"
 	EnvProduction  = "production"
 
-	CatalogFile  = "file"
-	CatalogMySQL = "mysql"
+	CatalogFile   = "file"
+	CatalogMySQL  = "mysql"
+	CatalogSKYMCM = "skymcm"
 )
 
 type Config struct {
 	AppEnv  string
 	AppPort string
 
-	// Where hotel data comes from: "file" (CATALOG_FILE, fake test data, no
-	// database) or "mysql" (DB_* below).
+	// Where hotel data comes from: "skymcm" (the SKYMCM website's public
+	// hotel API - the real listings; required in production), "file"
+	// (CATALOG_FILE, fake test data) or "mysql" (the chatbot's own test
+	// database, DB_* below). file and mysql are for local tests only.
 	CatalogSource string
 	CatalogFile   string
+
+	// The SKYMCM website's public API (CATALOG_SOURCE=skymcm) and where its
+	// /uploads/... photos are served (defaults to the API URL).
+	SKYMCMAPIURL         string
+	SKYMCMAssetURL       string
+	SKYMCMTimeoutSeconds int
+	SKYMCMCacheSeconds   int
+	SKYMCMRoomCacheSecs  int
+	SKYMCMLandmarkSecs   int
+	SKYMCMMaxConcurrency int
 
 	DBUser     string
 	DBPassword string
@@ -88,6 +102,14 @@ func Load() *Config {
 
 		CatalogSource: strings.ToLower(strings.TrimSpace(getenvDefault("CATALOG_SOURCE", CatalogFile))),
 		CatalogFile:   getenvDefault("CATALOG_FILE", "testdata/catalog.json"),
+
+		SKYMCMAPIURL:         strings.TrimRight(strings.TrimSpace(os.Getenv("SKYMCM_API_URL")), "/"),
+		SKYMCMAssetURL:       strings.TrimRight(strings.TrimSpace(os.Getenv("SKYMCM_ASSET_URL")), "/"),
+		SKYMCMTimeoutSeconds: getenvInt("SKYMCM_TIMEOUT_SECONDS", 8),
+		SKYMCMCacheSeconds:   getenvInt("SKYMCM_CACHE_SECONDS", 60),
+		SKYMCMRoomCacheSecs:  getenvInt("SKYMCM_ROOM_CACHE_SECONDS", 30),
+		SKYMCMLandmarkSecs:   getenvInt("SKYMCM_LANDMARK_CACHE_SECONDS", 1800),
+		SKYMCMMaxConcurrency: getenvInt("SKYMCM_MAX_CONCURRENCY", 4),
 
 		DBUser:     os.Getenv("DB_USER"),
 		DBPassword: os.Getenv("DB_PASSWORD"),
@@ -152,8 +174,12 @@ func (c *Config) Validate() error {
 		if err := c.ValidateDatabase(); err != nil {
 			problems = append(problems, err.Error())
 		}
+	case CatalogSKYMCM:
+		if err := c.validateSKYMCM(); err != nil {
+			problems = append(problems, err.Error())
+		}
 	default:
-		problems = append(problems, "CATALOG_SOURCE must be file or mysql")
+		problems = append(problems, "CATALOG_SOURCE must be skymcm, file or mysql")
 	}
 	for _, o := range c.CORSAllowedOrigins {
 		if !validOrigin.MatchString(o) {
@@ -167,6 +193,11 @@ func (c *Config) Validate() error {
 		if c.ChatbotDebug {
 			problems = append(problems, "CHATBOT_DEBUG must be off in production")
 		}
+		// The fake test catalogue (file or the test database) never serves
+		// real guests.
+		if c.CatalogSource != CatalogSKYMCM {
+			problems = append(problems, "CATALOG_SOURCE must be skymcm in production (file and mysql hold test hotels only)")
+		}
 	}
 	if len(problems) > 0 {
 		return errors.New("configuration: " + strings.Join(problems, "; "))
@@ -175,6 +206,32 @@ func (c *Config) Validate() error {
 }
 
 var validOrigin = regexp.MustCompile(`^https?://[A-Za-z0-9.-]+(:\d{1,5})?$`)
+
+// validateSKYMCM checks the SKYMCM API settings: an absolute URL without
+// credentials, query or fragment; https, except http for this machine
+// outside production (a local stand-in server).
+func (c *Config) validateSKYMCM() error {
+	if c.SKYMCMAPIURL == "" {
+		return errors.New("SKYMCM_API_URL is required when CATALOG_SOURCE=skymcm")
+	}
+	for _, v := range []struct{ name, value string }{{"SKYMCM_API_URL", c.SKYMCMAPIURL}, {"SKYMCM_ASSET_URL", c.SKYMCMAssetURL}} {
+		if v.value == "" {
+			continue
+		}
+		u, err := url.Parse(v.value)
+		if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+			return fmt.Errorf("%s must be an absolute URL such as https://skymcm.com (no credentials, query or fragment)", v.name)
+		}
+		local := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
+		switch {
+		case u.Scheme == "https":
+		case u.Scheme == "http" && local && c.AppEnv != EnvProduction:
+		default:
+			return fmt.Errorf("%s must use https (http is allowed only for localhost outside production)", v.name)
+		}
+	}
+	return nil
+}
 
 // ValidateDatabase checks the DB_* settings, including the database-name
 // guard. DB_PASSWORD may legitimately be empty.

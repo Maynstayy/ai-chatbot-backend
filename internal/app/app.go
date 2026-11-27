@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/Maynstayy/ai-chatbot-backend/internal/httpx"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/landmarks"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/roomtypes"
+	"github.com/Maynstayy/ai-chatbot-backend/internal/skymcm"
 	"github.com/Maynstayy/ai-chatbot-backend/pkg/cache"
 	"github.com/Maynstayy/ai-chatbot-backend/pkg/utils"
 )
@@ -33,12 +35,16 @@ type App struct {
 	aiEnabled bool
 }
 
-// Sources is where hotel data comes from.
+// Sources is where hotel data comes from: repositories for the local test
+// catalogues (file, mysql), or ready services for the SKYMCM API, whose
+// prices are final and must not be repriced.
 type Sources struct {
 	Hotels    hotels.Repository
 	RoomTypes roomtypes.Repository
 	Landmarks landmarks.Repository
 	DB        *sql.DB // set for MySQL, for the readiness check
+
+	SKYMCM *skymcm.Client // set for CATALOG_SOURCE=skymcm
 }
 
 // New validates the configuration, opens the catalogue and wires everything.
@@ -61,6 +67,22 @@ func New(cfg *config.Config) (*App, error) {
 
 func openSources(cfg *config.Config) (Sources, error) {
 	switch cfg.CatalogSource {
+	case config.CatalogSKYMCM:
+		client, err := skymcm.New(skymcm.Config{
+			BaseURL:          cfg.SKYMCMAPIURL,
+			AssetURL:         cfg.SKYMCMAssetURL,
+			Timeout:          time.Duration(cfg.SKYMCMTimeoutSeconds) * time.Second,
+			CacheTTL:         time.Duration(cfg.SKYMCMCacheSeconds) * time.Second,
+			RoomCacheTTL:     time.Duration(cfg.SKYMCMRoomCacheSecs) * time.Second,
+			LandmarkCacheTTL: time.Duration(cfg.SKYMCMLandmarkSecs) * time.Second,
+			MaxConcurrent:    cfg.SKYMCMMaxConcurrency,
+		})
+		if err != nil {
+			return Sources{}, err
+		}
+		// Only the host is logged; the catalogue is fetched on first use.
+		slog.Info("hotel catalogue: SKYMCM public API", "host", hostOf(cfg.SKYMCMAPIURL))
+		return Sources{SKYMCM: client}, nil
 	case config.CatalogMySQL:
 		db, err := database.Open(context.Background(), database.Config{
 			User: cfg.DBUser, Password: cfg.DBPassword, Host: cfg.DBHost, Port: cfg.DBPort, Name: cfg.DBName,
@@ -88,9 +110,19 @@ func openSources(cfg *config.Config) (Sources, error) {
 func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 	mux := http.NewServeMux()
 
-	hotelService := hotels.NewService(src.Hotels)
-	roomTypeService := roomtypes.NewService(src.RoomTypes)
-	landmarkService := landmarks.NewService(src.Landmarks)
+	var (
+		hotelService    hotels.Service
+		roomTypeService roomtypes.Service
+		landmarkService landmarks.Service
+	)
+	if src.SKYMCM != nil {
+		// The website's own prices, availability and listings, as returned.
+		hotelService, roomTypeService, landmarkService = src.SKYMCM, src.SKYMCM, src.SKYMCM
+	} else {
+		hotelService = hotels.NewService(src.Hotels)
+		roomTypeService = roomtypes.NewService(src.RoomTypes)
+		landmarkService = landmarks.NewService(src.Landmarks)
+	}
 
 	// PUBLIC CATALOGUE - the read-only endpoints the chat frontend's guided
 	// search uses (same paths and JSON as MaynStay).
@@ -143,6 +175,10 @@ func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 	})
 	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		body := map[string]any{"status": "ok", "catalog": cfg.CatalogSource, "ai": aiStatus(aiProvider != nil)}
+		if src.SKYMCM != nil {
+			// Last known state only: a readiness probe never calls the website.
+			body["skymcm"] = src.SKYMCM.Status()
+		}
 		if src.DB != nil {
 			if err := database.Ping(r.Context(), src.DB); err != nil {
 				slog.Error("readiness: database ping failed", "err", err.Error())
@@ -162,6 +198,13 @@ func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 	}
 
 	return &App{cfg: cfg, db: src.DB, cache: redisCache, mux: mux, aiEnabled: aiProvider != nil}
+}
+
+func hostOf(raw string) string {
+	if u, err := url.Parse(raw); err == nil {
+		return u.Host
+	}
+	return ""
 }
 
 func aiStatus(on bool) string {

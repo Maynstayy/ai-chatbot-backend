@@ -14,7 +14,8 @@ WORKDIR /app
 COPY --from=build /out/api /out/dbtool /app/
 COPY testdata/catalog.json /app/testdata/catalog.json
 COPY migrations /app/migrations
-ENV APP_ENV=production APP_PORT=8080
+# Production only ever serves the real catalogue (SKYMCM_API_URL must be set).
+ENV APP_ENV=production APP_PORT=8080 CATALOG_SOURCE=skymcm
 EXPOSE 8080
 USER nonroot:nonroot
 ENTRYPOINT ["/app/api"]

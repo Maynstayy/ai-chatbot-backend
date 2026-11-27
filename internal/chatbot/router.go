@@ -307,6 +307,10 @@ func (s *Service) route(ctx context.Context, in Input, run *toolRun, hasHistory 
 		}
 	}
 	if len(namedIDs) > 0 {
+		// "Is breakfast included at <hotel>?" with stay dates: its plans.
+		if d := s.mealFacts(ctx, run, msg, namedIDs, in.Context); d != nil {
+			return d, nil
+		}
 		if d := s.hotelFacts(ctx, msg, namedIDs, run.hotels); d != nil {
 			return d, nil
 		}
@@ -358,6 +362,13 @@ func (s *Service) route(ctx context.Context, in Input, run *toolRun, hasHistory 
 			}
 		case noHotelInView:
 			return &directReply{text: priceSummaryReply(catalog), intent: IntentHotelSearch}, nil
+		}
+	}
+	// "Is breakfast included there?" right after result cards, with stay
+	// dates: answered from those hotels' own rate plans, never guessed.
+	if city == "" && len(in.Context.HotelIDs) > 0 {
+		if d := s.mealFacts(ctx, run, msg, in.Context.HotelIDs, in.Context); d != nil {
+			return d, nil
 		}
 	}
 	// "Which of these has wifi?" right after result cards: those hotels.
@@ -576,6 +587,211 @@ func policyReply(msg string, list []HotelCard) *directReply {
 		b.WriteString(" When a hotel offers it, the option appears on the payment page.")
 	}
 	return &directReply{text: b.String(), intent: IntentHotelInfo}
+}
+
+// --- meals and rate-plan inclusions -------------------------------------------
+
+// mealAsk is a question about breakfast, other meals or what a rate plan
+// includes ("is GST included?" is not one).
+var mealAsk = regexp.MustCompile(`(?i)\b(break\s?fast|lunch|dinner|meals?|half[\s-]?board|full[\s-]?board|all[\s-]?inclusive|inclusions?)\b|\bfood\b.*\bincluded?\b|\bwhat(?:'s| is| are| does| do)\b.*\b(include[sd]?|come with)\b`)
+
+var (
+	breakfastText = regexp.MustCompile(`(?i)break\s?fast`)
+	lunchText     = regexp.MustCompile(`(?i)\blunch\b|\ball[\s-]?meals\b|full[\s-]?board|all[\s-]?inclusive`)
+	dinnerText    = regexp.MustCompile(`(?i)\bdinner\b|\bsupper\b|\ball[\s-]?meals\b|(half|full)[\s-]?board|all[\s-]?inclusive`)
+	anyMealText   = regexp.MustCompile(`(?i)break\s?fast|\blunch\b|\bdinner\b|\bmeals?\b|board\b|all[\s-]?inclusive`)
+)
+
+const maxMealHotels = 5
+
+// mealTerm is what the guest asked about: a specific meal, else meals in
+// general (also for "what's included?").
+func mealTerm(msg string) string {
+	m := strings.ToLower(msg)
+	switch {
+	case breakfastText.MatchString(m):
+		return "breakfast"
+	case strings.Contains(m, "lunch"):
+		return "lunch"
+	case strings.Contains(m, "dinner") || strings.Contains(m, "supper"):
+		return "dinner"
+	}
+	return "meals"
+}
+
+// planIncludes reports whether a plan's listing confirms the meal. Only the
+// hotel's own breakfast flag or inclusion text counts; nothing is inferred
+// from the plan's name or price.
+func planIncludes(p PlanCard, term string) bool {
+	text := strings.Join(p.Inclusions, " | ")
+	switch term {
+	case "breakfast":
+		return p.BreakfastIncluded || breakfastText.MatchString(text)
+	case "lunch":
+		return lunchText.MatchString(text)
+	case "dinner":
+		return dinnerText.MatchString(text)
+	}
+	return p.BreakfastIncluded || anyMealText.MatchString(text)
+}
+
+// mealFacts answers a breakfast, meal or inclusion question about specific
+// hotels for the stay the guest already chose, straight from each hotel's
+// bookable rate plans (looked up now). It returns nil - leaving the question
+// to the usual flow - when it isn't such a question or the stay dates aren't
+// known. A meal is called included only when a plan's listing says so; with
+// no plans to go on, the reply says it can't be confirmed.
+func (s *Service) mealFacts(ctx context.Context, run *toolRun, msg string, ids []int64, c SearchContext) *directReply {
+	if !mealAsk.MatchString(msg) || len(ids) == 0 || c.CheckIn == "" || c.CheckOut == "" {
+		return nil
+	}
+	if validateStay(c.CheckIn, c.CheckOut, run.now) != nil {
+		return nil
+	}
+	term := mealTerm(msg)
+	if len(ids) > maxMealHotels {
+		ids = ids[:maxMealHotels]
+	}
+	var lines []string
+	for _, id := range ids {
+		args := map[string]any{"hotel_id": id, "check_in": c.CheckIn, "check_out": c.CheckOut}
+		if c.Guests > 0 {
+			args["guests"] = c.Guests
+		}
+		lines = append(lines, mealLine(s.prefetch(ctx, run, toolRoomAvailability, args), term, c, s.hotelName(ctx, id)))
+	}
+	var b strings.Builder
+	if len(lines) == 1 {
+		b.WriteString(lines[0])
+	} else {
+		b.WriteString("For " + stayLabel(c) + ":")
+		for _, l := range lines {
+			b.WriteString("\n• " + l)
+		}
+	}
+	b.WriteString("\n\nInclusions are as each hotel lists them, and the booking page shows every plan's terms before you pay.")
+	return &directReply{text: b.String(), intent: IntentHotelInfo}
+}
+
+// mealLine is one hotel's answer from its availability lookup.
+func mealLine(p prefetched, term string, c SearchContext, fallbackName string) string {
+	var got struct {
+		HotelName string         `json:"hotel_name"`
+		RoomTypes []RoomTypeCard `json:"room_types"`
+	}
+	if p.isErr || json.Unmarshal([]byte(p.result), &got) != nil {
+		name := fallbackName
+		if name == "" {
+			name = "this hotel"
+		}
+		return fmt.Sprintf("I couldn't check %s's rate plans just now, so I can't confirm whether %s is included. Please try again in a moment.", name, mealLabel(term))
+	}
+	name := strings.TrimSpace(got.HotelName)
+	if name == "" {
+		name = fallbackName
+	}
+	var with, without []string
+	available, withPlans := 0, 0
+	for _, rt := range got.RoomTypes {
+		if rt.AvailableCount < max(rt.RoomsNeeded, 1) || (rt.FitsGuests != nil && !*rt.FitsGuests) {
+			continue
+		}
+		available++
+		if len(rt.Plans) > 0 {
+			withPlans++
+		}
+		for _, pl := range rt.Plans {
+			label := fmt.Sprintf("%s – %s (₹%s a night)", rt.Name, pl.Name, inr(pl.PricePerNight))
+			if planIncludes(pl, term) {
+				if term == "meals" {
+					label += ": " + strings.Join(mealsListed(pl), ", ")
+				}
+				with = append(with, label)
+			} else {
+				without = append(without, label)
+			}
+		}
+	}
+	stay := stayLabel(c)
+	switch {
+	case available == 0:
+		return fmt.Sprintf("%s has no rooms available for %s, so there are no rate plans to check for %s.", name, stay, mealLabel(term))
+	case withPlans == 0:
+		return fmt.Sprintf("%s hasn't listed rate plans for %s, so I can't confirm whether %s is included. Its page on the website shows the room details.", name, stay, mealLabel(term))
+	case len(with) == 0:
+		return fmt.Sprintf("None of %s's available plans for %s include %s: %s.", name, stay, mealLabel(term), listShort(without))
+	}
+	line := fmt.Sprintf("At %s for %s, %s is included with %s.", name, stay, mealLabel(term), listShort(with))
+	if term == "meals" {
+		line = fmt.Sprintf("At %s for %s, these plans include meals: %s.", name, stay, listShort(with))
+	}
+	if len(without) > 0 {
+		line += fmt.Sprintf(" Not included with %s.", listShort(without))
+	}
+	return line
+}
+
+// mealsListed is what a plan includes to eat, for the "which meals?" reply:
+// "Breakfast" when the hotel's breakfast flag confirms it, and any listed
+// inclusion that names a meal. Other extras (Wi-Fi, parking...) are not
+// meals and are never shown as one.
+func mealsListed(p PlanCard) []string {
+	var out []string
+	breakfastNamed := false
+	for _, inc := range p.Inclusions {
+		if anyMealText.MatchString(inc) {
+			out = append(out, inc)
+			if breakfastText.MatchString(inc) {
+				breakfastNamed = true
+			}
+		}
+	}
+	if p.BreakfastIncluded && !breakfastNamed {
+		out = append([]string{"Breakfast"}, out...)
+	}
+	return out
+}
+
+func mealLabel(term string) string {
+	if term == "meals" {
+		return "a meal"
+	}
+	return term
+}
+
+// listShort joins up to three items and counts the rest.
+func listShort(items []string) string {
+	if len(items) <= 3 {
+		return strings.Join(items, "; ")
+	}
+	return strings.Join(items[:3], "; ") + fmt.Sprintf("; and %d more", len(items)-3)
+}
+
+// stayLabel is "10 Dec 2026 - 12 Dec 2026" (plus guests when known).
+func stayLabel(c SearchContext) string {
+	label := c.CheckIn + " – " + c.CheckOut
+	in, err1 := time.Parse(dateLayout, c.CheckIn)
+	out, err2 := time.Parse(dateLayout, c.CheckOut)
+	if err1 == nil && err2 == nil {
+		label = in.Format("2 Jan 2006") + " – " + out.Format("2 Jan 2006")
+	}
+	switch {
+	case c.Guests == 1:
+		label += ", 1 guest"
+	case c.Guests > 1:
+		label += fmt.Sprintf(", %d guests", c.Guests)
+	}
+	return label
+}
+
+// hotelName is the listed name for a hotel id, when the catalogue has it.
+func (s *Service) hotelName(ctx context.Context, id int64) string {
+	for _, h := range s.catalog(ctx) {
+		if h.HotelID == id {
+			return h.Name
+		}
+	}
+	return ""
 }
 
 func (s *Service) runRouted(ctx context.Context, run *toolRun, name string, args map[string]any) (string, bool) {

@@ -18,6 +18,12 @@ Errors are always `{"error": "<message written for guests>"}`. Internal details
 
 Chat history stays in the browser in V1, so there are no `/conversations` endpoints.
 
+The hotel endpoints keep the same JSON whatever the catalogue source. With
+`CATALOG_SOURCE=skymcm` they return the SKYMCM website's real listings,
+availability and final prices, read from its public API. Photo paths become
+full URLs and inactive hotels are left out. With `file` or `mysql` they
+return the fake test hotels (local tests only).
+
 ## POST /api/v1/chatbot/message
 
 The body is capped at 8 KB and `message` at 1000 characters. Rate limit:

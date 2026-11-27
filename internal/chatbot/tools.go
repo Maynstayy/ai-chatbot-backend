@@ -10,9 +10,11 @@ import (
 	"log/slog"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/Maynstayy/ai-chatbot-backend/internal/bookings"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/hotels"
@@ -706,6 +708,67 @@ type RoomTypeCard struct {
 	RatePlanPricePerNight float64  `json:"rate_plan_price_per_night,omitempty"`
 	RatePlanTaxPerNight   float64  `json:"rate_plan_tax_per_night,omitempty"`
 	RatePlanStayTotal     *float64 `json:"rate_plan_stay_total,omitempty"`
+
+	// Plans are the bookable rate plans with what each includes, exactly as
+	// the hotel listed them. For the model only: they are left out of the
+	// room cards the website receives (its contract is unchanged).
+	Plans []PlanCard `json:"rate_plans,omitempty"`
+}
+
+// PlanCard is one bookable rate plan: its price and, verbatim from the
+// listing, whether breakfast is included and anything else it includes.
+type PlanCard struct {
+	RatePlanID        int64    `json:"rate_plan_id"`
+	Name              string   `json:"name"`
+	PricePerNight     float64  `json:"price_per_night"`
+	TaxPerNight       float64  `json:"tax_per_night"`
+	BreakfastIncluded bool     `json:"breakfast_included"`
+	Inclusions        []string `json:"inclusions,omitempty"`
+	FreeCancellation  bool     `json:"free_cancellation"`
+	PayAtProperty     bool     `json:"pay_at_property"`
+}
+
+const (
+	maxPlansPerRoom   = 6
+	maxInclusions     = 6
+	maxInclusionRunes = 60
+)
+
+// bookablePlans are the room type's active plans with enough rooms left for
+// this stay (the same rule as bestRatePlan), cheapest first.
+func bookablePlans(rt roomtypes.RoomType) []PlanCard {
+	needed := max(rt.RoomsNeeded, 1)
+	var out []PlanCard
+	for _, p := range rt.RatePlans {
+		if !p.IsActive || (p.RoomsLeft != nil && *p.RoomsLeft < needed) {
+			continue
+		}
+		out = append(out, PlanCard{
+			RatePlanID: p.RatePlanID, Name: p.Name, PricePerNight: p.PricePerNight, TaxPerNight: p.TaxPerNight,
+			BreakfastIncluded: p.BreakfastIncluded, Inclusions: cleanInclusions(p.Inclusions),
+			FreeCancellation: p.FreeCancellation, PayAtProperty: p.PayAtProperty,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].PricePerNight < out[j].PricePerNight })
+	if len(out) > maxPlansPerRoom {
+		out = out[:maxPlansPerRoom]
+	}
+	return out
+}
+
+// cleanInclusions keeps the listed inclusions as short plain text.
+func cleanInclusions(list []string) []string {
+	var out []string
+	for _, v := range list {
+		v = strings.Join(strings.FieldsFunc(v, func(r rune) bool { return unicode.IsControl(r) || unicode.IsSpace(r) }), " ")
+		if r := []rune(v); len(r) > maxInclusionRunes {
+			v = string(r[:maxInclusionRunes])
+		}
+		if v != "" && len(out) < maxInclusions {
+			out = append(out, v)
+		}
+	}
+	return out
 }
 
 // bestRatePlan picks the plan the website's chat would offer: active, enough
@@ -761,14 +824,16 @@ func (t *toolRun) roomAvailability(ctx context.Context, raw json.RawMessage) (an
 			ComboPricePerNight: rt.ComboPricePerNight, Recommended: rt.Recommended, SeasonalNote: rt.SeasonalNote,
 			CheckIn: in.CheckIn, CheckOut: in.CheckOut, Guests: in.Guests,
 		})
+		c := &cards[len(cards)-1]
 		if p := bestRatePlan(rt); p != nil {
-			c := &cards[len(cards)-1]
 			c.RatePlanID, c.RatePlanName = p.RatePlanID, p.Name
 			c.RatePlanPricePerNight, c.RatePlanTaxPerNight, c.RatePlanStayTotal = p.PricePerNight, p.TaxPerNight, p.StayTotal
 		}
+		c.Plans = bookablePlans(rt)
 	}
 	for _, c := range cards {
 		if len(t.roomTypes) < maxRecordedRoomTypes {
+			c.Plans = nil // the website's room cards stay as before
 			t.roomTypes = append(t.roomTypes, c)
 		}
 	}
@@ -779,7 +844,8 @@ func (t *toolRun) roomAvailability(ctx context.Context, raw json.RawMessage) (an
 		"check_in":   in.CheckIn,
 		"check_out":  in.CheckOut,
 		"room_types": cards,
-		"note":       "available_count is the number of rooms of that type free for these dates; prices are INR per room per night before GST; rate_plan_price_per_night is the cheapest bookable plan for this stay",
+		"note": "available_count is the number of rooms of that type free for these dates; prices are INR per room per night before GST; rate_plan_price_per_night is the cheapest bookable plan for this stay; " +
+			"rate_plans lists each bookable plan with breakfast_included and inclusions exactly as the hotel listed them - a meal is included only when a plan says so, never assume one",
 	}, nil
 }
 
