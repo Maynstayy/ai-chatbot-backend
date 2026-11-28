@@ -293,6 +293,22 @@ func (s *Service) HandleMessage(ctx context.Context, in Input) (*Output, error) 
 		out.Reply, out.Intent = cleanReply(reply, run), intent
 		out.RequiresMoreInformation = needInfo
 		out.RequiresLogin = needLogin && in.UserID == 0
+		// The listings are the only source of hotels, prices, ratings and
+		// reviews: a reply that states any they don't contain is replaced.
+		if s.unsupportedClaim(ctx, out.Reply, run, in) {
+			out.Reply = s.groundedReplacement(ctx, run)
+			route = "grounded"
+		}
+	}
+	// "under 1000" excludes 1000 on the cards too, however the model searched.
+	if limit, strict := budgetLimit(in.Message); limit > 0 {
+		kept := out.Hotels[:0]
+		for _, h := range out.Hotels {
+			if withinBudget(h.PricePerNight, limit, strict) {
+				kept = append(kept, h)
+			}
+		}
+		out.Hotels = kept
 	}
 	if errors.Is(err, ErrProviderRefused) {
 		route = "refused"

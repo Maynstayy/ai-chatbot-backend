@@ -61,6 +61,36 @@ In `ai-chatbot-frontend/.env.local`, set
 `NEXT_PUBLIC_CHATBOT_API_URL=http://localhost:8080`, then run `npm run dev`
 there. `CORS_ALLOWED_ORIGINS` already includes `http://localhost:3000`.
 
+### Sign-in (local testing with the mock auth server)
+
+The chatbot can only be used by visitors signed in to SKYMCM. Every `/api/v1/`
+endpoint (the chat, `GET /api/v1/chatbot/session`, hotels and room types)
+needs the website's login cookie, `maynstay_token`. The backend sends the
+token to the auth server's `GET /api/v1/users/profile` (which checks the
+signature, expiry and logout) and caches the answer for `AUTH_CACHE_SECONDS`
+(30 by default; 0 checks on every request):
+
+- missing, malformed, invalid, expired or revoked: **401** `Please login to
+  your SKYMCM account to use the AI Chatbot.`
+- auth server down or answering oddly: **503** (fails closed)
+- nothing behind the gate (AI model, hotel search) runs for a refused request
+
+Outside production `SKYMCM_AUTH_URL` must be localhost, so local testing can
+only reach the mock auth server, never the live website:
+
+```bash
+go run ./cmd/mockauth          # http://localhost:8090 (loopback only)
+# backend .env: SKYMCM_AUTH_URL=http://127.0.0.1:8090
+```
+
+Sign in from the chat's **Log in** button, or open
+`http://localhost:8090/mock-login` (use `localhost`, not `127.0.0.1`, so the
+cookie is set for the same host as the chat). `/mock-logout` logs out.
+`GET /mock/tokens` returns fresh test tokens (`valid_a`, `valid_b`,
+`short_a`, `expired`, `revoked`, `invalid`) for curl, sent as
+`Cookie: maynstay_token=<token>` or `Authorization: Bearer <token>`. The mock
+holds fake accounts only and signs with a random key made at each start.
+
 ## Commands
 
 | Command | What it does |
@@ -175,8 +205,11 @@ docs/API.md          endpoint reference with JSON examples
 
 ## Security notes
 
-- Public guest access only. Booking tools are never offered, because they need
-  a signed-in user and this backend has no login.
+- Sign-in required: every `/api/v1/` endpoint needs a valid SKYMCM session
+  (see above), checked against the website's API; the backend holds no JWT
+  secret. Cookie-authenticated writes must come from an allowed origin, and
+  CORS allows credentials for the exact `CORS_ALLOWED_ORIGINS` only. Booking
+  tools are still never offered (the caller's bookings aren't read).
 - A guest can't choose a conversation id. An unknown id gets a fresh
   server-generated id (128-bit random), so another visitor's id can only be
   used by someone who already has it.

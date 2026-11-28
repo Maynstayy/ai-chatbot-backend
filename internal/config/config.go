@@ -1,7 +1,8 @@
 // Package config loads the backend's settings from the environment (and a
 // local .env file when present). Only the chatbot's own settings exist here:
-// no payment, email, OAuth or JWT settings, since the standalone backend
-// has no login, bookings or payments.
+// no payment, email, OAuth or JWT settings. Login stays on the SKYMCM
+// website: the chatbot only asks the website's API whether a visitor's
+// session is valid (AUTH_* below), and never holds a signing secret.
 package config
 
 import (
@@ -85,6 +86,19 @@ type Config struct {
 
 	// UploadsDir is served at /uploads/ when it exists (hotel photos).
 	UploadsDir string
+
+	// AuthRequired makes every /api/v1/ endpoint require a signed-in SKYMCM
+	// session (default true; it can't be turned off in production).
+	AuthRequired bool
+	// AuthURL is the API asked to validate sessions (GET
+	// /api/v1/users/profile). Outside production it must be this machine
+	// (the local mock auth server), so testing never reaches the live site.
+	AuthURL string
+	// AuthCookieName is the website's login cookie.
+	AuthCookieName string
+	// AuthCacheSeconds reuses a session check this long (0 = every request).
+	AuthCacheSeconds   int
+	AuthTimeoutSeconds int
 }
 
 // Load reads .env (if present) and the environment.
@@ -137,6 +151,12 @@ func Load() *Config {
 		SupportWhatsApp: os.Getenv("SUPPORT_WHATSAPP"),
 
 		UploadsDir: getenvDefault("UPLOADS_DIR", "./uploads"),
+
+		AuthRequired:       !strings.EqualFold(strings.TrimSpace(os.Getenv("AUTH_REQUIRED")), "false"),
+		AuthURL:            strings.TrimRight(strings.TrimSpace(os.Getenv("SKYMCM_AUTH_URL")), "/"),
+		AuthCookieName:     getenvDefault("AUTH_COOKIE_NAME", "maynstay_token"),
+		AuthCacheSeconds:   getenvNonNegative("AUTH_CACHE_SECONDS", 30),
+		AuthTimeoutSeconds: getenvInt("AUTH_TIMEOUT_SECONDS", 5),
 	}
 }
 
@@ -186,7 +206,13 @@ func (c *Config) Validate() error {
 			problems = append(problems, fmt.Sprintf("CORS_ALLOWED_ORIGINS entry %q is not an origin like https://example.com", o))
 		}
 	}
+	if err := c.validateAuth(); err != nil {
+		problems = append(problems, err.Error())
+	}
 	if c.AppEnv == EnvProduction {
+		if !c.AuthRequired {
+			problems = append(problems, "AUTH_REQUIRED can't be false in production")
+		}
 		if len(c.CORSAllowedOrigins) == 0 {
 			problems = append(problems, "CORS_ALLOWED_ORIGINS is required in production")
 		}
@@ -233,6 +259,37 @@ func (c *Config) validateSKYMCM() error {
 	return nil
 }
 
+var validCookieName = regexp.MustCompile(`^[A-Za-z0-9_\-]{1,64}$`)
+
+// validateAuth checks the session settings. Outside production the auth URL
+// must be this machine (http or https), so local testing can only ever ask
+// the local mock auth server; in production it must be https.
+func (c *Config) validateAuth() error {
+	if !c.AuthRequired {
+		return nil
+	}
+	if c.AuthURL == "" {
+		return errors.New("SKYMCM_AUTH_URL is required when AUTH_REQUIRED is on (use the local mock auth server, e.g. http://127.0.0.1:8090, for testing)")
+	}
+	u, err := url.Parse(c.AuthURL)
+	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
+		return errors.New("SKYMCM_AUTH_URL must be a base URL such as http://127.0.0.1:8090 (no path, credentials, query or fragment)")
+	}
+	local := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
+	switch {
+	case u.Scheme != "http" && u.Scheme != "https":
+		return errors.New("SKYMCM_AUTH_URL must use http or https")
+	case c.AppEnv != EnvProduction && !local:
+		return errors.New("SKYMCM_AUTH_URL must be localhost outside production (the local mock auth server); live login checks are refused")
+	case c.AppEnv == EnvProduction && u.Scheme != "https":
+		return errors.New("SKYMCM_AUTH_URL must use https in production")
+	}
+	if !validCookieName.MatchString(c.AuthCookieName) {
+		return errors.New("AUTH_COOKIE_NAME must be a plain cookie name")
+	}
+	return nil
+}
+
 // ValidateDatabase checks the DB_* settings, including the database-name
 // guard. DB_PASSWORD may legitimately be empty.
 func (c *Config) ValidateDatabase() error {
@@ -275,6 +332,15 @@ func splitList(v string) []string {
 func getenvDefault(key, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 		return v
+	}
+	return fallback
+}
+
+// getenvNonNegative reads an integer that may be 0, falling back on a
+// missing or bad value.
+func getenvNonNegative(key string, fallback int) int {
+	if n, err := strconv.Atoi(strings.TrimSpace(os.Getenv(key))); err == nil && n >= 0 {
+		return n
 	}
 	return fallback
 }

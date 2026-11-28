@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/Maynstayy/ai-chatbot-backend/internal/catalog"
@@ -21,6 +23,7 @@ import (
 	"github.com/Maynstayy/ai-chatbot-backend/internal/httpx"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/landmarks"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/roomtypes"
+	"github.com/Maynstayy/ai-chatbot-backend/internal/session"
 	"github.com/Maynstayy/ai-chatbot-backend/internal/skymcm"
 	"github.com/Maynstayy/ai-chatbot-backend/pkg/cache"
 	"github.com/Maynstayy/ai-chatbot-backend/pkg/utils"
@@ -33,6 +36,9 @@ type App struct {
 	cache     *cache.Cache
 	mux       *http.ServeMux
 	aiEnabled bool
+	// sessions validates SKYMCM sign-in; nil with AUTH_REQUIRED off (or a
+	// broken auth setting, which then refuses every API request).
+	sessions *session.Validator
 }
 
 // Sources is where hotel data comes from: repositories for the local test
@@ -124,8 +130,9 @@ func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 		landmarkService = landmarks.NewService(src.Landmarks)
 	}
 
-	// PUBLIC CATALOGUE - the read-only endpoints the chat frontend's guided
-	// search uses (same paths and JSON as MaynStay).
+	// CATALOGUE - the read-only endpoints the chat frontend's guided search
+	// uses (same paths and JSON as MaynStay). Like every /api/ route they
+	// require a signed-in SKYMCM session when AUTH_REQUIRED is on (Handler).
 	hotels.RegisterRoutes(mux, hotels.NewHandler(hotelService))
 	roomtypes.RegisterRoutes(mux, roomtypes.NewHandler(roomTypeService))
 
@@ -169,6 +176,28 @@ func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 	chatService.SetSupport(chatbot.SupportInfo{Phone: cfg.SupportPhone, Email: cfg.SupportEmail, WhatsApp: cfg.SupportWhatsApp})
 	chatbot.RegisterRoutes(mux, chatbot.NewHandler(chatService, chatbot.NewRateLimiter(redisCache, cfg.ChatbotRatePerMin)))
 
+	// SESSION - whether the caller is signed in to SKYMCM (200, or the
+	// session gate's 401/503), for the chat window to show itself or the
+	// login prompt.
+	mux.HandleFunc("GET /api/v1/chatbot/session", session.Handler)
+	var sessions *session.Validator
+	if cfg.AuthRequired {
+		sessions, err = session.New(session.Config{
+			AuthURL:    cfg.AuthURL,
+			CookieName: cfg.AuthCookieName,
+			CacheTTL:   time.Duration(cfg.AuthCacheSeconds) * time.Second,
+			Timeout:    time.Duration(cfg.AuthTimeoutSeconds) * time.Second,
+		})
+		if err != nil {
+			// Fails closed: the gate then answers 503 for every /api/ call.
+			slog.Error("session validation not configured: every API request will be refused", "err", err.Error())
+		} else {
+			slog.Info("sign-in required for the chatbot API", "auth_host", hostOf(cfg.AuthURL), "cache_seconds", cfg.AuthCacheSeconds)
+		}
+	} else {
+		slog.Warn("AUTH_REQUIRED=false: the chatbot API is open without sign-in (local testing only)")
+	}
+
 	// HEALTH - liveness and readiness (no secrets in either).
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		utils.WriteJSONBody(w, http.StatusOK, map[string]any{"status": "ok"})
@@ -197,7 +226,7 @@ func Build(cfg *config.Config, src Sources, redisCache *cache.Cache) *App {
 		mux.Handle("GET /uploads/", uploadedFiles(cfg.UploadsDir))
 	}
 
-	return &App{cfg: cfg, db: src.DB, cache: redisCache, mux: mux, aiEnabled: aiProvider != nil}
+	return &App{cfg: cfg, db: src.DB, cache: redisCache, mux: mux, aiEnabled: aiProvider != nil, sessions: sessions}
 }
 
 func hostOf(raw string) string {
@@ -217,7 +246,36 @@ func aiStatus(on bool) string {
 // Handler is the full HTTP stack: request id + access log, panic recovery,
 // security headers, CORS, then the routes (with JSON 404/405).
 func (a *App) Handler() http.Handler {
-	return requestLog(recoverer(securityHeaders(corsHandler(a.cfg.CORSOrigins(), jsonFallback(a.mux)))))
+	routes := jsonFallback(a.mux)
+	if a.cfg.AuthRequired {
+		routes = a.sessionGate(routes)
+	}
+	return requestLog(recoverer(securityHeaders(corsHandler(a.cfg.CORSOrigins(), routes))))
+}
+
+// sessionGate requires a signed-in SKYMCM session for everything under
+// /api/ (the chatbot, the session check and the hotel catalogue): 401 when
+// signed out, 503 when the login can't be checked. Health checks and hotel
+// photos stay open. Nothing behind the gate runs for a refused request.
+func (a *App) sessionGate(next http.Handler) http.Handler {
+	protected := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Retry-After", "10")
+		session.Refuse(w, r, session.UnavailableText, http.StatusServiceUnavailable)
+	}))
+	if a.sessions != nil {
+		protected = a.sessions.Middleware(a.cfg.CORSOrigins(), next)
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if p := path.Clean("/" + r.URL.Path); p == "/api" || strings.HasPrefix(p, "/api/") {
+			protected.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // jsonFallback serves requests normally, except that when no route matches

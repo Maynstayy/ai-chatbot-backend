@@ -76,6 +76,9 @@ func corsHandler(origins []string, h http.Handler) http.Handler {
 		origin := r.Header.Get("Origin")
 		if allowed[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			// The chat page sends the SKYMCM login cookie; only the exact
+			// allowed origins (never "*") may do so.
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Request-ID")
 			w.Header().Set("Access-Control-Expose-Headers", "X-Request-ID, Retry-After")

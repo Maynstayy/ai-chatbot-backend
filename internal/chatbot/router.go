@@ -334,6 +334,35 @@ func (s *Service) route(ctx context.Context, in Input, run *toolRun, hasHistory 
 	}
 	related := hotelWords.MatchString(msg)
 	bare := city != "" && len(strings.Fields(w)) <= 3
+	// A place SKYMCM doesn't list ("hotels in Mumbai", "Goa stays"): say so
+	// plainly, naming the cities that are listed, even when the website sent
+	// the previous search's hotels as context - those must never be shown
+	// as results for another place.
+	if city == "" && (related || searchAsk.MatchString(msg) || isRefundableSearch(msg)) {
+		if place := unlistedPlaceIn(msg, catalog); place != "" {
+			return &directReply{text: noHotelsListedReply(place, catalog), intent: IntentHotelSearch}, nil
+		}
+	}
+	// "Show me hotels that give a full refund on cancellation": a search over
+	// the listings' free-cancellation data, in the named or current city -
+	// not the answer about how long refunds take.
+	if isRefundableSearch(msg) {
+		c := city
+		if c == "" {
+			c = listedCity(in.Context.Destination, catalog)
+		}
+		return s.refundableReply(ctx, run, c, msg), nil
+	}
+	// "under 1000" right after a search: the same city, strictly within the
+	// budget, from the listed prices.
+	if city == "" && budgetOnly.MatchString(msg) {
+		if c := listedCity(in.Context.Destination, catalog); c != "" {
+			return s.budgetReply(ctx, run, c, msg), nil
+		}
+		if cities := listedCities(catalog); cities != "" {
+			return &directReply{text: "Which city should I look in? We currently have hotels in " + cities + ".", intent: IntentHotelSearch}, nil
+		}
+	}
 	// "Show hotels in Jaipur": a place SKYMCM doesn't list. Say so and name
 	// the cities it does, rather than let anything be made up.
 	if city == "" && related && searchAsk.MatchString(msg) && unlistedPlace.MatchString(msg) && len(in.Context.HotelIDs) == 0 {
@@ -392,6 +421,13 @@ func (s *Service) route(ctx context.Context, in Input, run *toolRun, hasHistory 
 	}
 	if city == "" && related && in.Context.Destination != "" {
 		city = in.Context.Destination
+	}
+	// "Hotels in Varanasi under 1000": listed starting prices, filtered
+	// strictly ("under" excludes the amount itself).
+	if city != "" && near == "" && (related || bare) {
+		if limit, _ := budgetLimit(msg); limit > 0 && !detailAsk.MatchString(msg) && (bare || searchAsk.MatchString(msg)) {
+			return s.budgetReply(ctx, run, city, msg), nil
+		}
 	}
 	if city != "" && (related || bare) {
 		args := map[string]any{"city": city}

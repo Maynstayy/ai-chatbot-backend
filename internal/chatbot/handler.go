@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/Maynstayy/ai-chatbot-backend/internal/session"
 	"github.com/Maynstayy/ai-chatbot-backend/pkg/utils"
 )
 
@@ -44,9 +46,10 @@ func NewHandler(service *Service, limiter *RateLimiter) *Handler {
 	return &Handler{service: service, limiter: limiter}
 }
 
-// POST /api/v1/chatbot/message - public guest chat. The standalone backend
-// has no login: every caller is a guest (UserID 0), so the booking tools are
-// never offered and booking questions get the sign-in reply.
+// POST /api/v1/chatbot/message - the chat. With AUTH_REQUIRED on, the app's
+// session gate has already refused anyone not signed in to SKYMCM; the
+// verified account only keys the rate limit. The caller's bookings aren't
+// read (UserID stays 0), so the booking tools are never offered.
 func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 	var req MessageRequest
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBodyBytes))
@@ -80,7 +83,11 @@ func (h *Handler) Message(w http.ResponseWriter, r *http.Request) {
 		utils.Error(w, "The chat assistant is not available right now.", http.StatusServiceUnavailable)
 		return
 	}
-	if !h.limiter.Allow(r.Context(), rateKey(in.UserID, r)) {
+	key := rateKey(in.UserID, r)
+	if account, ok := session.FromContext(r.Context()); ok {
+		key = "account:" + strconv.FormatInt(account.ID, 10)
+	}
+	if !h.limiter.Allow(r.Context(), key) {
 		w.Header().Set("Retry-After", "60")
 		utils.Error(w, "Too many messages. Please wait a minute and try again.", http.StatusTooManyRequests)
 		return

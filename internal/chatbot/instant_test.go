@@ -88,10 +88,10 @@ func TestLandmarksAndUnlistedPlaces(t *testing.T) {
 	if out.Reply != "Har Ki Pauri is in Haridwar. Here are some hotels available in Haridwar." || len(out.Hotels) != 1 {
 		t.Fatalf("landmark: %q", out.Reply)
 	}
-	for _, msg := range []string{"Show hotels in Jaipur", "I want to book a hotel in Atlantis"} {
+	for msg, place := range map[string]string{"Show hotels in Jaipur": "Jaipur", "I want to book a hotel in Atlantis": "Atlantis"} {
 		f = newFixture()
 		out, _ = f.svc.HandleMessage(context.Background(), Input{Message: msg})
-		if out.Reply != "Please enter a valid city or hotel name from our listings. We currently have hotels in Haridwar." ||
+		if out.Reply != "No hotels are currently listed in "+place+" on SKYMCM. We currently have hotels in Haridwar." ||
 			f.ai.lastReq.System != "" || len(f.hotels.filters) != 0 {
 			t.Errorf("%q: %q", msg, out.Reply)
 		}

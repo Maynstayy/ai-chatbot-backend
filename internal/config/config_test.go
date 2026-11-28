@@ -46,6 +46,12 @@ func TestProductionRules(t *testing.T) {
 		}
 	}
 	c.CatalogSource, c.SKYMCMAPIURL = CatalogSKYMCM, "https://skymcm.com"
+	// Sign-in can't be switched off in production.
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "AUTH_REQUIRED can't be false in production") {
+		t.Fatalf("production without sign-in: %v", err)
+	}
+	// (A configuration value only: validating it makes no request.)
+	c.AuthRequired, c.AuthURL, c.AuthCookieName = true, "https://skymcm.com", "maynstay_token"
 	if err := c.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -121,5 +127,58 @@ func TestLandmarkCacheSetting(t *testing.T) {
 	t.Setenv("SKYMCM_LANDMARK_CACHE_SECONDS", "nonsense")
 	if c := Load(); c.SKYMCMLandmarkSecs != 1800 {
 		t.Fatalf("invalid value must fall back to the default: %d", c.SKYMCMLandmarkSecs)
+	}
+}
+
+func TestAuthSettings(t *testing.T) {
+	c := valid()
+	c.AuthRequired, c.AuthCookieName = true, "maynstay_token"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "SKYMCM_AUTH_URL is required") {
+		t.Fatalf("missing auth URL: %v", err)
+	}
+	// Outside production only this machine (the mock auth server) is allowed,
+	// so local testing can never send a login check to the live site.
+	for _, bad := range []string{"https://skymcm.com", "http://skymcm.com", "http://192.168.1.5:8090", "localhost:8090",
+		"http://127.0.0.1:8090/api", "http://user:pw@127.0.0.1:8090", "ftp://127.0.0.1"} {
+		c.AuthURL = bad
+		if err := c.Validate(); err == nil {
+			t.Errorf("SKYMCM_AUTH_URL %q accepted outside production", bad)
+		}
+	}
+	for _, ok := range []string{"http://127.0.0.1:8090", "http://localhost:8090", "http://[::1]:8090"} {
+		c.AuthURL = ok
+		if err := c.Validate(); err != nil {
+			t.Errorf("SKYMCM_AUTH_URL %q refused: %v", ok, err)
+		}
+	}
+	c.AuthURL, c.AuthCookieName = "http://127.0.0.1:8090", "bad cookie;"
+	if err := c.Validate(); err == nil || !strings.Contains(err.Error(), "AUTH_COOKIE_NAME") {
+		t.Fatalf("bad cookie name: %v", err)
+	}
+	// Production: https only.
+	p := valid()
+	p.AppEnv, p.CORSAllowedOrigins, p.CatalogSource, p.SKYMCMAPIURL = EnvProduction, []string{"https://skymcm.com"}, CatalogSKYMCM, "https://skymcm.com"
+	p.AuthRequired, p.AuthURL, p.AuthCookieName = true, "http://localhost:8090", "maynstay_token"
+	if err := p.Validate(); err == nil || !strings.Contains(err.Error(), "https in production") {
+		t.Fatalf("http auth in production: %v", err)
+	}
+}
+
+func TestAuthDefaults(t *testing.T) {
+	for _, k := range []string{"AUTH_REQUIRED", "SKYMCM_AUTH_URL", "AUTH_COOKIE_NAME", "AUTH_CACHE_SECONDS", "AUTH_TIMEOUT_SECONDS"} {
+		t.Setenv(k, "")
+	}
+	c := Load()
+	if !c.AuthRequired || c.AuthCookieName != "maynstay_token" || c.AuthCacheSeconds != 30 || c.AuthTimeoutSeconds != 5 {
+		t.Fatalf("defaults: %+v", c)
+	}
+	t.Setenv("AUTH_CACHE_SECONDS", "0")
+	t.Setenv("AUTH_REQUIRED", "false")
+	if c := Load(); c.AuthCacheSeconds != 0 || c.AuthRequired {
+		t.Fatalf("cache 0 / auth off: %d %v", c.AuthCacheSeconds, c.AuthRequired)
+	}
+	t.Setenv("AUTH_CACHE_SECONDS", "-5")
+	if c := Load(); c.AuthCacheSeconds != 30 {
+		t.Fatalf("negative cache: %d", c.AuthCacheSeconds)
 	}
 }
